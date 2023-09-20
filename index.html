@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The snake game</title>
+</head>
+<body>
+
+    <div class="container" style="position:fixed; top:50%; left:50%; margin-top:-500px; margin-left:-500px;">
+        <div style="border:2px dashed #000000; padding-left: 40%;">
+            <h1>SCORE: <span id="score"></span></h1>
+        </div>
+
+        <canvas id="canvas" width="1000" height="750" style="border:1px solid #000000;">
+        </canvas>
+    <div style="border:2px dashed #000000;">
+
+
+        <input type="range" min="1" max="100" value="10" id="sizeSlider"> <span>Snake size: <span id="snakeSize"></span></span><br>
+        <input type="range" min="3" max="200" value="20" id="speedSlider"> <span>Ticks per second: <span id="speed"></span></span><br>
+        <input type="range" min="5" max="50" value="10" id="gridSlider"> <span>Grid size: <span id="gridSize"></span></span><br>
+        <input type="range" min="1" max="100" value="10" id="goldAppleSlider"> <span>Gold apple chance: <span id="appleChance"></span></span><br>
+
+    </div>
+    </div>
+
+    <script>
+
+        let c = document.getElementById("canvas");
+        let ctx = c.getContext("2d");
+
+        const snakeTail = new Array();
+        let snakeSize = 10;
+
+        let framesPerSecond = 20;
+        let gridSize = 10;
+        const startingPoint = roundToNearestNumber((c.offsetHeight)/2,gridSize);
+        let startSnakeSize = 10;
+
+        let gameTickId = setInterval(tick, 1000 / framesPerSecond);
+
+        const apples = new Array();
+        let goldAppleChance = 10; //1-100%
+        const appleSnakeLength = 1;
+        const goldenAppleSnakeLength = 3;
+
+        document.getElementById("snakeSize").innerHTML = document.getElementById("sizeSlider").value;
+        document.getElementById("speed").innerHTML = document.getElementById("speedSlider").value;
+        document.getElementById("gridSize").innerHTML = document.getElementById("gridSlider").value + "px";
+        document.getElementById("appleChance").innerHTML = document.getElementById("goldAppleSlider").value + "%";
+ 
+        document.getElementById("score").innerHTML = snakeSize * 10;
+
+        document.getElementById("sizeSlider").oninput = function() {
+            document.getElementById("snakeSize").innerHTML = this.value;
+            snakeSize = this.value;
+            startSnakeSize = this.value;
+            resetGame();
+            initializeSnake();
+
+        }
+
+        document.getElementById("speedSlider").oninput = function() {
+            document.getElementById("speed").innerHTML = this.value ;
+            framesPerSecond = this.value;
+            
+            clearInterval(gameTickId);
+            gameTickId = setInterval(tick, 1000 / framesPerSecond);
+        }
+
+        document.getElementById("gridSlider").oninput = function() {
+            document.getElementById("gridSize").innerHTML = this.value + "px";
+            gridSize = parseInt(this.value);
+            drawGrid();
+            
+            snakeHead.x = roundToNearestNumber(snakeHead.x,gridSize);
+            snakeHead.y = roundToNearestNumber(snakeHead.y,gridSize);
+            
+            for(let apple of apples){
+                apple.x = roundToNearestNumber(apple.x,gridSize);
+                apple.y = roundToNearestNumber(apple.y,gridSize);
+            }
+
+            snakeTail.length = 0;
+            initializeSnake()
+            tick();
+
+        }
+
+        document.getElementById("goldAppleSlider").oninput = function() {
+            document.getElementById("appleChance").innerHTML = this.value + "%";
+            goldAppleChance = parseInt(this.value);
+            
+        }
+
+        function apple(x,y) {
+            this.x = x;
+            this.y = y;
+
+            this.golden = (randomIntFromInterval(0,100) <= goldAppleChance)
+        }
+
+
+        let snakeHead = {
+            xvel:0,
+            yvel:0,
+
+            x:startingPoint,
+            y:startingPoint,
+        }
+
+        function snakeTailPart(x,y){
+            this.x = x;
+            this.y = y;
+        }
+
+        document.body.addEventListener('keydown', keyDown); // Listen for keys
+        initialize();
+
+        function resetGame(){
+            snakeHead.x = startingPoint;
+            snakeHead.y = startingPoint;
+            snakeHead.xvel = 0;
+            snakeHead.yvel = 0;
+            snakeSize = startSnakeSize;
+            snakeTail.length = 0;
+
+            initialize();
+
+        }
+
+        function initialize() {
+
+                initializeSnake();
+
+                apples.length = 0;
+                spawnApple();
+                spawnApple();
+                spawnApple();
+
+        }
+
+        function initializeSnake(){
+            for(let i = 1; i <= snakeSize; i++) {
+                snakeTail.push(new snakeTailPart(snakeHead.x, snakeHead.y + i * gridSize)); // initialize snake tail
+            }
+        }
+
+        function tick() {
+            clear(); // Update frame
+            
+            drawGrid();
+            drawApples();
+
+            if(snakeHead.xvel != 0 || snakeHead.yvel != 0) { // If IS moving, then do the tail moving sequence
+                
+                let removedPart = snakeTail.pop();
+                removedPart.x = snakeHead.x;
+                removedPart.y = snakeHead.y;
+
+                snakeTail.unshift(removedPart);
+            }
+
+            snakeHead.x = snakeHead.x + snakeHead.xvel * gridSize;
+            snakeHead.y = snakeHead.y + snakeHead.yvel * gridSize;
+
+            collisionCheck();
+            drawSnake(); // Draw snake
+
+
+        }
+
+        function spawnApple(){ // Spawn apple and make sure that it doesnt spawn closer than 5 grids to the border.
+            let newApple = new apple(roundToNearestNumber(randomIntFromInterval(0,c.offsetWidth - (gridSize * 5)),gridSize), roundToNearestNumber(randomIntFromInterval(0,c.offsetHeight - (gridSize * 5)),gridSize));
+            apples.push(newApple);
+        }
+
+        function drawApples(){
+            for(let lApple of apples){
+                ctx.beginPath();
+
+                if(lApple.golden) ctx.fillStyle="orange";
+                else ctx.fillStyle="green";
+                ctx.fillRect(lApple.x,lApple.y, gridSize, gridSize); // Draw tail
+            }
+        }
+
+        function collisionCheck() {
+            if(snakeHead.x < 0) // Out of bounds checks
+                snakeHead.x = roundToNearestNumber(c.offsetWidth,gridSize);
+
+            else if(snakeHead.x > c.offsetWidth )
+                snakeHead.x = 0;
+
+            else if(snakeHead.y < 0)
+                snakeHead.y = roundToNearestNumber(c.offsetHeight,gridSize);
+            
+            else if(snakeHead.y > c.offsetHeight)
+                snakeHead.y = 0;
+
+            for(let snakeTailPart of snakeTail){ // Snake tail collision check
+                if(snakeHead.x == snakeTailPart.x && snakeHead.y == snakeTailPart.y){
+                    alert("Game over!");
+                    resetGame();
+                    break;
+                }
+            }
+
+            for(let lApple of apples){
+                if(snakeHead.x == lApple.x && snakeHead.y == lApple.y){ // Apple collision check
+                    let snakeBonus = appleSnakeLength;
+
+                    if(lApple.golden)
+                        snakeBonus = goldenAppleSnakeLength;
+
+                    for(let i = 0; i < snakeBonus; i++) {
+                        snakeSize +=1;
+                        snakeTail.unshift(new snakeTailPart(snakeHead.x, snakeHead.y))
+                    }
+
+                    let index = apples.indexOf(lApple);
+                    apples.splice(index,1);
+                    spawnApple();
+
+                    framesPerSecond +=1 // make game harder when apple eaten
+                    console.log("Score: " + snakeSize * 10);
+                    document.getElementById("score").innerHTML = snakeSize * 10;
+ 
+                }
+            }
+            
+        }
+
+        function drawSnake(){
+
+            ctx.beginPath();
+            ctx.fillStyle="black";
+            ctx.fillRect(snakeHead.x, snakeHead.y, gridSize, gridSize); // Draw snake head
+
+            for(let snakeTailPart of snakeTail){
+                ctx.beginPath();
+                ctx.fillStyle="red";
+                ctx.fillRect(snakeTailPart.x, snakeTailPart.y, gridSize, gridSize); // Draw tail
+            }
+        }
+
+        function clear() {
+            ctx.fillStyle= 'white';
+            ctx.fillRect(0,0,canvas.clientWidth,canvas.clientHeight);
+        }
+
+        function drawGrid(){
+            for(let i = 0; i <= c.offsetWidth; i = i + gridSize) { // Horizontal grid
+                console.log
+            ctx.beginPath();
+            ctx.lineWidth= 1;
+            ctx.strokeStyle= "gray";
+            ctx.rect(i, 0, gridSize, gridSize);
+            ctx.stroke();
+
+            for(let j = 0; j <= c.offsetHeight; j = j + gridSize){ // Vertical grid
+                ctx.beginPath();
+                ctx.lineWidth= 1;
+                ctx.strokeStyle= "gray";
+                ctx.rect(i, j, gridSize, gridSize);
+                ctx.stroke();
+            }
+            }
+        }
+
+        function randomIntFromInterval(min, max) { // generate random between 2 numbers
+            return Math.floor(Math.random() * (max - min + 1) + min)
+        }
+
+        function roundToNearestNumber(number,roundTo) {
+            return Math.round(number / roundTo) * roundTo;
+        }
+
+        function keyDown() {
+
+            switch(event.keyCode){
+                case 38: // UP
+                    if(snakeHead.yvel==1)
+                        return;
+                    snakeHead.yvel=-1;
+                    snakeHead.xvel=0;
+                    break;
+                case 40: // DOWN
+                    if(snakeHead.yvel==-1)
+                        return;
+                    snakeHead.yvel=1;
+                    snakeHead.xvel=0;
+                    break
+                case 37: // LEFT
+                    if(snakeHead.xvel==1)
+                        return;
+                    snakeHead.yvel=0;
+                    snakeHead.xvel=-1;
+                    break;
+                case 39: // RIGHT
+                    if(snakeHead.xvel==-1)
+                        return;
+                    snakeHead.yvel=0;
+                    snakeHead.xvel=1;
+                    break;
+            }
+}
+
+    </script>
+    
+</body>
+</html>
