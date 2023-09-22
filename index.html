@@ -35,22 +35,26 @@
 
         let framesPerSecond = 20;
         let gridSize = 10;
-        const startingPoint = roundToNearestNumber((c.offsetHeight)/2,gridSize);
+        let startingPointX = roundToNearestNumber((c.offsetWidth)/2,gridSize);
+        let startingPointY = roundToNearestNumber((c.offsetHeight)/2,gridSize);
+
         let startSnakeSize = 10;
 
         let gameTickId = setInterval(tick, 1000 / framesPerSecond);
 
         const apples = new Array();
-        let goldAppleChance = 10; //1-100%
         const appleSnakeLength = 1;
         const goldenAppleSnakeLength = 3;
+        let goldAppleChance = 10; //1-100%
+
+        let score = 0;
 
         document.getElementById("snakeSize").innerHTML = document.getElementById("sizeSlider").value;
         document.getElementById("speed").innerHTML = document.getElementById("speedSlider").value;
         document.getElementById("gridSize").innerHTML = document.getElementById("gridSlider").value + "px";
         document.getElementById("appleChance").innerHTML = document.getElementById("goldAppleSlider").value + "%";
  
-        document.getElementById("score").innerHTML = snakeSize * 10;
+        document.getElementById("score").innerHTML = score;
 
         document.getElementById("sizeSlider").oninput = function() {
             document.getElementById("snakeSize").innerHTML = this.value;
@@ -74,6 +78,9 @@
             gridSize = parseInt(this.value);
             drawGrid();
             
+            startingPointX = roundToNearestNumber((c.offsetWidth)/2,gridSize);
+            startingPointY = roundToNearestNumber((c.offsetHeight)/2,gridSize);
+
             snakeHead.x = roundToNearestNumber(snakeHead.x,gridSize);
             snakeHead.y = roundToNearestNumber(snakeHead.y,gridSize);
             
@@ -106,8 +113,8 @@
             xvel:0,
             yvel:0,
 
-            x:startingPoint,
-            y:startingPoint,
+            x:startingPointX,
+            y:startingPointY,
         }
 
         class snakeTailPart {
@@ -121,26 +128,22 @@
         initialize();
 
         function resetGame(){
-            snakeHead.x = startingPoint;
-            snakeHead.y = startingPoint;
+            snakeHead.x = startingPointX;
+            snakeHead.y = startingPointY;
             snakeHead.xvel = 0;
             snakeHead.yvel = 0;
             snakeSize = startSnakeSize;
             snakeTail.length = 0;
 
             initialize();
-
         }
 
         function initialize() {
-
                 initializeSnake();
-
-                apples.length = 0;
+                apples.length = 0; // clear apple array
                 spawnApple();
                 spawnApple();
                 spawnApple();
-
         }
 
         function initializeSnake(){
@@ -167,8 +170,8 @@
             snakeHead.x = snakeHead.x + snakeHead.xvel * gridSize;
             snakeHead.y = snakeHead.y + snakeHead.yvel * gridSize;
 
-            collisionCheck();
             drawSnake(); // Draw snake
+            collisionCheck();
 
 
         }
@@ -225,9 +228,10 @@
                     apples.splice(index,1);
                     spawnApple();
 
-                    framesPerSecond +=1 // make game harder when apple eaten
-                    console.log("Score: " + snakeSize * 10);
-                    document.getElementById("score").innerHTML = snakeSize * 10;
+                    score = score +10;
+                    console.log(score);
+
+                    document.getElementById("score").innerHTML = score;
  
                 }
             }
@@ -254,7 +258,6 @@
 
         function drawGrid(){
             for(let i = 0; i <= c.offsetWidth; i = i + gridSize) { // Horizontal grid
-                console.log
             ctx.beginPath();
             ctx.lineWidth= 1;
             ctx.strokeStyle= "gray";
@@ -297,14 +300,14 @@
                 case 37: // LEFT
                     if(snakeHead.xvel==1)
                         return;
-                    snakeHead.yvel=0;
                     snakeHead.xvel=-1;
+                    snakeHead.yvel=0;
                     break;
                 case 39: // RIGHT
                     if(snakeHead.xvel==-1)
                         return;
-                    snakeHead.yvel=0;
                     snakeHead.xvel=1;
+                    snakeHead.yvel=0;
                     break;
             }
 }
