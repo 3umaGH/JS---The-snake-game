@@ -110,9 +110,11 @@
             y:startingPoint,
         }
 
-        function snakeTailPart(x,y){
-            this.x = x;
-            this.y = y;
+        class snakeTailPart {
+            constructor(x,y) {
+                this.x = x;
+                this.y = y;
+            }
         }
 
         document.body.addEventListener('keydown', keyDown); // Listen for keys
